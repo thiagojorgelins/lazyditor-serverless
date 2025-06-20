@@ -2,7 +2,7 @@
 
 ## 1. Tecnologias Utilizadas
 
-Este projeto implementa um editor de imagens serverless completo, utilizando as seguintes tecnologias:
+Este projeto implementa uma prova de conceito de um sistema de edição de imagens baseado em computação serverless, utilizando as seguintes tecnologias:
 
 ### Frontend
 
@@ -24,6 +24,7 @@ Este projeto implementa um editor de imagens serverless completo, utilizando as 
 - **Conversão PDF**: Transformar imagens em documentos PDF
 
 ## 2. Arquitetura da Solução
+
 ![Diagrama](diagrama.png)
 
 A arquitetura implementada segue o modelo serverless com os seguintes componentes:
@@ -75,6 +76,7 @@ PROCESSED_BUCKET=lazyditor-processed-files
 - Pillow Layer: Biblioteca de processamento de imagens Python
 - Boto3 Layer: SDK da AWS para Python (incluído no runtime)
 ```
+
 ## 4. Operações de Processamento
 
 ### Redimensionamento de Imagem
@@ -84,9 +86,9 @@ def resize_image(image_data, options, execution_logs):
     width = options.get('width', 800)
     height = options.get('height', 600)
     maintain_ratio = options.get('maintainRatio', True)
-    
+
     image = Image.open(io.BytesIO(image_data))
-    
+
     if maintain_ratio:
         image.thumbnail((width, height), Image.Resampling.LANCZOS)
     else:
@@ -106,11 +108,11 @@ def image_to_blackwhite(image_data, options, execution_logs):
 ```python
 def enhance_image(image_data, options, execution_logs):
     brightness = options.get('brightness', 1.0)
-    contrast = options.get('contrast', 1.0) 
+    contrast = options.get('contrast', 1.0)
     saturation = options.get('saturation', 1.0)
-    
+
     image = Image.open(io.BytesIO(image_data))
-    
+
     if brightness != 1.0:
         image = ImageEnhance.Brightness(image).enhance(brightness)
     if contrast != 1.0:
@@ -151,20 +153,41 @@ A aplicação implementa um sistema completo de logs que acompanha cada etapa do
 - **Validação Base64**: Verificação de integridade dos dados
 - **Parâmetros obrigatórios**: Validação de operation, fileName e fileData
 
-## 5. Como Executar o Projeto
+## 5. Como Acessar e Testar a Aplicação
 
-### Pré-requisitos
+### Versão Web
+
+Você pode acessar diretamente a aplicação hospedada:
+
+🌐 **[Abrir Lazyditor Web](https://lazyditor.com.br)**
+
+---
+
+### Aplicativo Android
+
+Também é possível utilizar a versão mobile em dispositivos Android:
+
+📦 **[Baixar Lazyditor APK](https://github.com/thiagojorgelins/lazyditor-serverless/releases/download/v0.0.1/lazyditor-0.0.1.apk)**
+
+---
+
+### Rodar Localmente com Docker
+
+#### Pré-requisitos
+
 - Docker
 - Docker Compose
 
-### Rodar frontend local
+#### Instruções
 
-1. **Executar página web**:
+1. **Subir o ambiente local**:
+
    ```bash
    docker compose up -d
    ```
 
-2. **Acessar aplicação**:
+2. **Acessar a aplicação no navegador**:
+
    ```
    http://localhost:8080
    ```
