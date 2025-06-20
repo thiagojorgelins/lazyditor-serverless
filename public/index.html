@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lazyditor - Editor de Imagens Serverless</title>
+    <link rel="shortcut icon" href="icon.png" type="image/x-icon" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <img src="icon.png" alt="Logo do Lazyditor" class="header-icon">
+        <p>Editor de Imagens Serverless - Processamento sob demanda</p>
+      </div>
+
+      <div class="content">
+        <div
+          class="upload-section"
+          id="uploadSection"
+          onclick="document.getElementById('fileInput').click()"
+        >
+          <div class="upload-icon">
+            <span class="material-icons">cloud_upload</span>
+          </div>
+          <div class="upload-text">Selecionar Imagem</div>
+          <div class="upload-subtext">JPG, PNG, GIF • Máximo 25MB</div>
+          <input
+            type="file"
+            id="fileInput"
+            class="file-input"
+            accept=".jpg,.jpeg,.png,.gif"
+          />
+        </div>
+
+        <div id="selectedFileSection" style="display: none">
+          <div class="selected-file">
+            <span class="material-icons file-icon" id="fileIcon">image</span>
+            <div class="file-info">
+              <div class="file-name" id="fileName"></div>
+              <div class="file-details" id="fileDetails"></div>
+            </div>
+            <span class="material-icons remove-file" onclick="resetSelection()"
+              >close</span
+            >
+          </div>
+          <div id="imagePreviewContainer"></div>
+
+          <div class="operations-title">Operações Disponíveis:</div>
+          <div class="operations-grid" id="operationsGrid"></div>
+
+          <div id="optionsContainer"></div>
+
+          <button id="processButton" class="convert-button">Processar</button>
+        </div>
+
+        <div class="processing-indicator" id="processingIndicator">
+          <div class="spinner"></div>
+          <div>
+            <strong>Processando imagem...</strong><br />
+            <span id="processingStatus">Iniciando processamento</span>
+          </div>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+          <div class="results-title">
+            <span class="material-icons">task_alt</span>
+            Resultados
+          </div>
+          <div id="resultsList"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
