@@ -14,6 +14,10 @@ s3_client = boto3.client('s3')
 ORIGINAL_BUCKET = os.environ.get('ORIGINAL_BUCKET', 'lazyditor-original-files')
 PROCESSED_BUCKET = os.environ.get('PROCESSED_BUCKET', 'lazyditor-processed-files')
 
+MAX_RESOLUTION_PIXELS = 25_000_000
+MAX_DIMENSION = 8192
+MAX_OUTPUT_RESOLUTION = 10_000_000
+
 # CORS headers SIMPLES como na versão que funciona
 headers = {
     'Access-Control-Allow-Origin': '*',
@@ -110,6 +114,41 @@ def process_image_operation(file_data, operation, options, execution_logs):
         execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - ❌ ERRO: {error_msg}")
         raise ValueError(error_msg)
 
+def validate_image_resolution(image, execution_logs):
+    width, height = image.size
+    total_pixels = width * height
+    
+    execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - Validando resolução: {width}x{height}")
+    execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - Total de pixels: {total_pixels:,}")
+    
+    if total_pixels > MAX_RESOLUTION_PIXELS:
+        error_msg = f"Imagem muito grande: {total_pixels:,} pixels. Máximo: {MAX_RESOLUTION_PIXELS:,} pixels"
+        execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - ERRO: {error_msg}")
+        raise ValueError(error_msg)
+    
+    if width > MAX_DIMENSION or height > MAX_DIMENSION:
+        error_msg = f"Dimensão muito grande: {width}x{height}. Máximo: {MAX_DIMENSION}px por lado"
+        execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - ERRO: {error_msg}")
+        raise ValueError(error_msg)
+    
+    execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - Resolução válida")
+    return True
+
+def validate_output_resolution(width, height, execution_logs):
+    total_pixels = width * height
+    
+    if total_pixels > MAX_OUTPUT_RESOLUTION:
+        scale_factor = (MAX_OUTPUT_RESOLUTION / total_pixels) ** 0.5
+        new_width = int(width * scale_factor)
+        new_height = int(height * scale_factor)
+        
+        execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - ⚠️ Resolução de saída muito alta")
+        execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - 🔧 Reduzindo de {width}x{height} para {new_width}x{new_height}")
+        
+        return new_width, new_height
+    
+    return width, height
+  
 def resize_image(image_data, options, execution_logs):
     width = options.get('width', 800)
     height = options.get('height', 600)
@@ -119,6 +158,7 @@ def resize_image(image_data, options, execution_logs):
     execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - 🔧 Manter proporção: {maintain_ratio}")
     
     image = Image.open(io.BytesIO(image_data))
+    validate_image_resolution(image, execution_logs)
     original_size = image.size
     execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - 📊 Tamanho original: {original_size[0]}x{original_size[1]}")
     
@@ -126,9 +166,11 @@ def resize_image(image_data, options, execution_logs):
         scale_factor = min(width / original_size[0], height / original_size[1])
         new_width = int(original_size[0] * scale_factor)
         new_height = int(original_size[1] * scale_factor)
-     
+         
+        new_width, new_height = validate_output_resolution(new_width, new_height, execution_logs)
         image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
     else:
+        width, height = validate_output_resolution(width, height, execution_logs)
         image = image.resize((width, height), Image.Resampling.LANCZOS)
     
     execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - 📊 Novo tamanho final: {image.size[0]}x{image.size[1]}")

@@ -66,15 +66,27 @@ function handleDrop(event) {
   if (file) selectFile(file);
 }
 
-function selectFile(file) {
-  if (!validateFile(file)) return;
-  selectedFile = file;
-  document.getElementById("uploadSection").style.display = "none";
-  document.getElementById("selectedFileSection").style.display = "block";
-  showSelectedFileInfo(file);
-  showImagePreview(file);
-  renderOperations();
-  resetResults();
+async function selectFile(file) {
+    if (!validateFile(file)) return;
+    
+    try {
+        const resolution = await validateImageResolution(file);
+        
+        selectedFile = file;
+        document.getElementById("uploadSection").style.display = "none";
+        document.getElementById("selectedFileSection").style.display = "block";
+        showSelectedFileInfo(file);
+        showImagePreview(file);
+        renderOperations();
+        resetResults();
+        
+        showToast(`Imagem carregada: ${resolution.width}x${resolution.height} (${resolution.totalPixels.toLocaleString()} pixels)`, "success");
+        
+    } catch (error) {
+        console.error("Erro na validação de resolução:", error);
+        showToast(error.message, "error");
+        return;
+    }
 }
 
 function validateFile(file) {
@@ -94,6 +106,45 @@ function validateFile(file) {
     return false;
   }
   return true;
+}
+
+function validateImageResolution(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        
+        img.onload = function() {
+            URL.revokeObjectURL(url);
+            
+            const width = this.naturalWidth;
+            const height = this.naturalHeight;
+            const totalPixels = width * height;
+            
+            console.log(`🔍 Resolução detectada: ${width}x${height} (${totalPixels.toLocaleString()} pixels)`);
+            
+            const MAX_RESOLUTION_PIXELS = 25_000_000;
+            const MAX_DIMENSION = 8192;
+            
+            if (totalPixels > MAX_RESOLUTION_PIXELS) {
+                reject(new Error(`Resolução muito alta: ${totalPixels.toLocaleString()} pixels. Máximo: ${MAX_RESOLUTION_PIXELS.toLocaleString()} pixels.`));
+                return;
+            }
+            
+            if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                reject(new Error(`Dimensão muito grande: ${width}x${height}px. Máximo: ${MAX_DIMENSION}px por lado.`));
+                return;
+            }
+            
+            resolve({ width, height, totalPixels });
+        };
+        
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('Erro ao carregar imagem para validação'));
+        };
+        
+        img.src = url;
+    });
 }
 
 function resetSelection() {
