@@ -15,8 +15,8 @@ ORIGINAL_BUCKET = os.environ.get('ORIGINAL_BUCKET', 'lazyditor-original-files')
 PROCESSED_BUCKET = os.environ.get('PROCESSED_BUCKET', 'lazyditor-processed-files')
 
 MAX_RESOLUTION_PIXELS = 25_000_000
-MAX_DIMENSION = 8192
-MAX_OUTPUT_RESOLUTION = 10_000_000
+MAX_DIMENSION = 5000
+MAX_OUTPUT_RESOLUTION = 25_000_000
 
 # CORS headers SIMPLES como na versão que funciona
 headers = {
@@ -154,8 +154,20 @@ def resize_image(image_data, options, execution_logs):
     height = options.get('height', 600)
     maintain_ratio = options.get('maintainRatio', True)
     
-    execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - 📐 Redimensionando para {width}x{height}")
-    execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - 🔧 Manter proporção: {maintain_ratio}")
+    if width > MAX_DIMENSION or height > MAX_DIMENSION:
+        error_msg = f"Dimensões solicitadas ({width}x{height}) excedem o limite máximo de {MAX_DIMENSION}px por lado"
+        execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - ERRO: {error_msg}")
+        raise ValueError(error_msg)
+    
+    total_pixels = width * height
+    if total_pixels > MAX_OUTPUT_RESOLUTION:
+        error_msg = f"Resolução solicitada ({width}x{height} = {total_pixels:,} pixels) excede o limite de {MAX_OUTPUT_RESOLUTION:,} pixels"
+        execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - ERRO: {error_msg}")
+        raise ValueError(error_msg)
+    
+    execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - Redimensionando para {width}x{height}")
+    execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - Manter proporção: {maintain_ratio}")
+    execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - Dimensões aprovadas: {total_pixels:,} pixels")
     
     image = Image.open(io.BytesIO(image_data))
     validate_image_resolution(image, execution_logs)
@@ -166,14 +178,13 @@ def resize_image(image_data, options, execution_logs):
         scale_factor = min(width / original_size[0], height / original_size[1])
         new_width = int(original_size[0] * scale_factor)
         new_height = int(original_size[1] * scale_factor)
-         
-        new_width, new_height = validate_output_resolution(new_width, new_height, execution_logs)
+        execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - 📏 Calculando proporção: scale={scale_factor:.3f}")
         image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
     else:
-        width, height = validate_output_resolution(width, height, execution_logs)
+        execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - Forçando dimensões exatas: {width}x{height}")
         image = image.resize((width, height), Image.Resampling.LANCZOS)
     
-    execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - 📊 Novo tamanho final: {image.size[0]}x{image.size[1]}")
+    execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - Tamanho final: {image.size[0]}x{image.size[1]}")
     
     output = io.BytesIO()
     image = image.convert('RGB')
@@ -185,6 +196,7 @@ def resize_image(image_data, options, execution_logs):
         'content_type': 'image/jpeg',
         'details': f'Redimensionado de {original_size[0]}x{original_size[1]} para {image.size[0]}x{image.size[1]} (proporção: {"mantida" if maintain_ratio else "forçada"})'
     }
+
 
 def image_to_blackwhite(image_data, options, execution_logs):
     execution_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] - 🎨 Convertendo para preto e branco")
