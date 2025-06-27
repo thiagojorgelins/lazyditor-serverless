@@ -1,6 +1,8 @@
 const LAMBDA_URL =
   "https://ettxuxfbfap75g64meugsbdqpe0tkriy.lambda-url.us-east-2.on.aws/";
 const MAX_FILE_SIZE_MB = 25;
+const MAX_DIMENSION = 5000;
+const MAX_OUTPUT_RESOLUTION = 25_000_000;
 
 const OPERATIONS = [
   {
@@ -67,26 +69,26 @@ function handleDrop(event) {
 }
 
 async function selectFile(file) {
-    if (!validateFile(file)) return;
-    
-    try {
-        const resolution = await validateImageResolution(file);
-        
-        selectedFile = file;
-        document.getElementById("uploadSection").style.display = "none";
-        document.getElementById("selectedFileSection").style.display = "block";
-        showSelectedFileInfo(file);
-        showImagePreview(file);
-        renderOperations();
-        resetResults();
-        
-        showToast(`Imagem carregada: ${resolution.width}x${resolution.height} (${resolution.totalPixels.toLocaleString()} pixels)`, "success");
-        
-    } catch (error) {
-        console.error("Erro na validação de resolução:", error);
-        showToast(error.message, "error");
-        return;
-    }
+  if (!validateFile(file)) return;
+
+  try {
+    const resolution = await validateImageResolution(file);
+
+    selectedFile = file;
+    document.getElementById("uploadSection").style.display = "none";
+    document.getElementById("selectedFileSection").style.display = "block";
+    showSelectedFileInfo(file);
+    showImagePreview(file);
+    renderOperations();
+    resetResults();
+
+    showToast(`Imagem carregada: ${resolution.width}x${resolution.height} (${resolution.totalPixels.toLocaleString()} pixels)`, "success");
+
+  } catch (error) {
+    console.error("Erro na validação de resolução:", error);
+    showToast(error.message, "error");
+    return;
+  }
 }
 
 function validateFile(file) {
@@ -109,42 +111,42 @@ function validateFile(file) {
 }
 
 function validateImageResolution(file) {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        
-        img.onload = function() {
-            URL.revokeObjectURL(url);
-            
-            const width = this.naturalWidth;
-            const height = this.naturalHeight;
-            const totalPixels = width * height;
-            
-            console.log(`🔍 Resolução detectada: ${width}x${height} (${totalPixels.toLocaleString()} pixels)`);
-            
-            const MAX_RESOLUTION_PIXELS = 25_000_000;
-            const MAX_DIMENSION = 8192;
-            
-            if (totalPixels > MAX_RESOLUTION_PIXELS) {
-                reject(new Error(`Resolução muito alta: ${totalPixels.toLocaleString()} pixels. Máximo: ${MAX_RESOLUTION_PIXELS.toLocaleString()} pixels.`));
-                return;
-            }
-            
-            if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
-                reject(new Error(`Dimensão muito grande: ${width}x${height}px. Máximo: ${MAX_DIMENSION}px por lado.`));
-                return;
-            }
-            
-            resolve({ width, height, totalPixels });
-        };
-        
-        img.onerror = () => {
-            URL.revokeObjectURL(url);
-            reject(new Error('Erro ao carregar imagem para validação'));
-        };
-        
-        img.src = url;
-    });
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = function () {
+      URL.revokeObjectURL(url);
+
+      const width = this.naturalWidth;
+      const height = this.naturalHeight;
+      const totalPixels = width * height;
+
+      console.log(`🔍 Resolução detectada: ${width}x${height} (${totalPixels.toLocaleString()} pixels)`);
+
+      const MAX_RESOLUTION_PIXELS = 25_000_000;
+      const MAX_DIMENSION = 8192;
+
+      if (totalPixels > MAX_RESOLUTION_PIXELS) {
+        reject(new Error(`Resolução muito alta: ${totalPixels.toLocaleString()} pixels. Máximo: ${MAX_RESOLUTION_PIXELS.toLocaleString()} pixels.`));
+        return;
+      }
+
+      if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+        reject(new Error(`Dimensão muito grande: ${width}x${height}px. Máximo: ${MAX_DIMENSION}px por lado.`));
+        return;
+      }
+
+      resolve({ width, height, totalPixels });
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Erro ao carregar imagem para validação'));
+    };
+
+    img.src = url;
+  });
 }
 
 function resetSelection() {
@@ -222,13 +224,97 @@ function showOperationOptions(operationId) {
   let optionsHTML = "";
   switch (operationId) {
     case "resize-image":
-      optionsHTML = `<div class="options-section show"><div class="options-title"><span class="material-icons">photo_size_select_large</span>Opções de Redimensionamento</div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;"><div class="form-group"><label class="form-label">Largura (px):</label><input type="number" class="form-control" id="resizeWidth" value="1024" min="1"></div><div class="form-group"><label class="form-label">Altura (px):</label><input type="number" class="form-control" id="resizeHeight" value="1024" min="1"></div></div><div class="form-group"><label class="form-label">Manter proporção:</label><select class="form-control" id="maintainRatio"><option value="true" selected>Sim</option><option value="false">Não</option></select></div></div>`;
+      optionsHTML = `
+        <div class="options-section show">
+          <div class="options-title">
+            <span class="material-icons">photo_size_select_large</span>
+            Opções de Redimensionamento
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+            <div class="form-group">
+              <label class="form-label">Largura (px):</label>
+              <input type="number" class="form-control" id="resizeWidth" value="1024" min="1" max="${MAX_DIMENSION}" oninput="validateAndUpdateInputs()">
+              <small class="form-hint">Máximo: ${MAX_DIMENSION.toLocaleString()}px</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Altura (px):</label>
+              <input type="number" class="form-control" id="resizeHeight" value="1024" min="1" max="${MAX_DIMENSION}" oninput="validateAndUpdateInputs()">
+              <small class="form-hint">Máximo: ${MAX_DIMENSION.toLocaleString()}px</small>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Manter proporção:</label>
+            <select class="form-control" id="maintainRatio" onchange="validateAndUpdateInputs()">
+              <option value="true" selected>Sim (recomendado)</option>
+              <option value="false">Não (forçar dimensões exatas)</option>
+            </select>
+            <small class="form-hint">
+              <span id="pixelCount">1.048.576 pixels</span><br>
+              💡 Limite máximo: ${MAX_OUTPUT_RESOLUTION.toLocaleString()} pixels (5000×5000)
+            </small>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Presets rápidos:</label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+              <button type="button" class="preset-btn" onclick="setResizePreset(1024, 1024)">1024×1024</button>
+              <button type="button" class="preset-btn" onclick="setResizePreset(1920, 1080)">Full HD</button>
+              <button type="button" class="preset-btn" onclick="setResizePreset(2560, 1440)">2K</button>
+              <button type="button" class="preset-btn" onclick="setResizePreset(3840, 2160)">4K</button>
+              <button type="button" class="preset-btn" onclick="setResizePreset(5000, 5000)">5000×5000 MAX</button>
+            </div>
+          </div>
+          <div id="validationWarning" class="validation-warning" style="display: none;">
+            <span class="material-icons">warning</span>
+            <span id="warningText"></span>
+          </div>
+        </div>`;
       break;
     case "enhance-image":
-      optionsHTML = `<div class="options-section show"><div class="options-title"><span class="material-icons">tonality</span>Opções de Melhoria</div><div class="form-group"><label class="form-label">Brilho:</label><div class="range-container"><input type="range" class="form-control" id="brightness" min="0.5" max="2" step="0.1" value="1" oninput="updateRangeValue(this, 'brightnessValue')"><span class="range-value" id="brightnessValue">1.0</span></div></div><div class="form-group"><label class="form-label">Contraste:</label><div class="range-container"><input type="range" class="form-control" id="contrast" min="0.5" max="2" step="0.1" value="1" oninput="updateRangeValue(this, 'contrastValue')"><span class="range-value" id="contrastValue">1.0</span></div></div><div class="form-group"><label class="form-label">Saturação:</label><div class="range-container"><input type="range" class="form-control" id="saturation" min="0.5" max="2" step="0.1" value="1" oninput="updateRangeValue(this, 'saturationValue')"><span class="range-value" id="saturationValue">1.0</span></div></div></div>`;
+      optionsHTML = `
+        <div class="options-section show">
+          <div class="options-title">
+            <span class="material-icons">tonality</span>
+            Opções de Melhoria
+          </div>
+          <div class="form-group">
+            <label class="form-label">Brilho:</label>
+            <div class="range-container">
+              <input type="range" class="form-control" id="brightness" min="0.5" max="2" step="0.1" value="1" oninput="updateRangeValue(this, 'brightnessValue')">
+              <span class="range-value" id="brightnessValue">1.0</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contraste:</label>
+            <div class="range-container">
+              <input type="range" class="form-control" id="contrast" min="0.5" max="2" step="0.1" value="1" oninput="updateRangeValue(this, 'contrastValue')">
+              <span class="range-value" id="contrastValue">1.0</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Saturação:</label>
+            <div class="range-container">
+              <input type="range" class="form-control" id="saturation" min="0.5" max="2" step="0.1" value="1" oninput="updateRangeValue(this, 'saturationValue')">
+              <span class="range-value" id="saturationValue">1.0</span>
+            </div>
+          </div>
+        </div>`;
       break;
     case "create-thumbnail":
-      optionsHTML = `<div class="options-section show"><div class="options-title"><span class="material-icons">image</span>Opções de Thumbnail</div><div class="form-group"><label class="form-label">Tamanho Máximo (px):</label><select class="form-control" id="thumbnailSize"><option value="128">128</option><option value="256" selected>256</option><option value="512">512</option></select></div></div>`;
+      optionsHTML = `
+        <div class="options-section show">
+          <div class="options-title">
+            <span class="material-icons">image</span>
+            Opções de Thumbnail
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tamanho Máximo (px):</label>
+            <select class="form-control" id="thumbnailSize">
+              <option value="128">128</option>
+              <option value="256" selected>256</option>
+              <option value="512">512</option>
+            </select>
+          </div>
+        </div>`;
       break;
     default:
       optionsHTML = "";
@@ -237,31 +323,103 @@ function showOperationOptions(operationId) {
   container.innerHTML = optionsHTML;
 }
 
+function validateAndUpdateInputs() {
+  const widthInput = document.getElementById("resizeWidth");
+  const heightInput = document.getElementById("resizeHeight");
+  const pixelCountElement = document.getElementById("pixelCount");
+  const warningElement = document.getElementById("validationWarning");
+  const warningText = document.getElementById("warningText");
+
+  if (!widthInput || !heightInput || !pixelCountElement) return;
+
+  let width = parseInt(widthInput.value) || 0;
+  let height = parseInt(heightInput.value) || 0;
+  let hasWarning = false;
+  let warningMessage = "";
+
+  if (width > MAX_DIMENSION) {
+    width = MAX_DIMENSION;
+    widthInput.value = width;
+    hasWarning = true;
+    warningMessage = `Largura limitada ao máximo de ${MAX_DIMENSION}px`;
+  }
+
+  if (height > MAX_DIMENSION) {
+    height = MAX_DIMENSION;
+    heightInput.value = height;
+    hasWarning = true;
+    warningMessage = `Altura limitada ao máximo de ${MAX_DIMENSION}px`;
+  }
+
+  const totalPixels = width * height;
+
+  if (totalPixels > MAX_OUTPUT_RESOLUTION) {
+    hasWarning = true;
+    warningMessage = `Resolução total muito alta: ${totalPixels.toLocaleString()} pixels. Máximo: ${MAX_OUTPUT_RESOLUTION.toLocaleString()} pixels.`;
+
+    const maxSquare = Math.floor(Math.sqrt(MAX_OUTPUT_RESOLUTION));
+    warningMessage += ` Tente dimensões menores (ex: ${maxSquare}×${maxSquare}).`;
+  }
+
+  let displayText = `${totalPixels.toLocaleString()} pixels`;
+  if (totalPixels <= MAX_OUTPUT_RESOLUTION) {
+    displayText += ` ✅`;
+    pixelCountElement.style.color = "#27ae60";
+  } else {
+    displayText += ` EXCEDE LIMITE!`;
+    pixelCountElement.style.color = "#e74c3c";
+  }
+
+  pixelCountElement.innerHTML = displayText;
+
+  if (hasWarning && warningElement && warningText) {
+    warningText.textContent = warningMessage;
+    warningElement.style.display = "flex";
+  } else if (warningElement) {
+    warningElement.style.display = "none";
+  }
+}
+
 function getOperationOptions(operationId) {
   const options = {};
   switch (operationId) {
     case "resize-image":
-      options.width =
-        parseInt(document.getElementById("resizeWidth")?.value, 10) ||
-        1024;
-      options.height =
-        parseInt(document.getElementById("resizeHeight")?.value, 10) ||
-        1024;
-      options.maintainRatio =
-        document.getElementById("maintainRatio")?.value === "true";
+      const width = parseInt(document.getElementById("resizeWidth")?.value, 10) || 1024;
+      const height = parseInt(document.getElementById("resizeHeight")?.value, 10) || 1024;
+      const maintainRatio = document.getElementById("maintainRatio")?.value === "true";
+
+      if (width <= 0 || height <= 0) {
+        showToast("Dimensões devem ser maiores que zero!", "error");
+        return null;
+      }
+
+      if (width > MAX_DIMENSION) {
+        showToast(`Largura muito grande! Máximo: ${MAX_DIMENSION.toLocaleString()}px`, "error");
+        return null;
+      }
+
+      if (height > MAX_DIMENSION) {
+        showToast(`Altura muito grande! Máximo: ${MAX_DIMENSION.toLocaleString()}px`, "error");
+        return null;
+      }
+
+      const totalPixels = width * height;
+      if (totalPixels > MAX_OUTPUT_RESOLUTION) {
+        showToast(`Resolução total muito alta: ${totalPixels.toLocaleString()} pixels. Máximo: ${MAX_OUTPUT_RESOLUTION.toLocaleString()} pixels!`, "error");
+        return null;
+      }
+
+      options.width = width;
+      options.height = height;
+      options.maintainRatio = maintainRatio;
       break;
     case "enhance-image":
-      options.brightness =
-        parseFloat(document.getElementById("brightness")?.value) || 1.0;
-      options.contrast =
-        parseFloat(document.getElementById("contrast")?.value) || 1.0;
-      options.saturation =
-        parseFloat(document.getElementById("saturation")?.value) || 1.0;
+      options.brightness = parseFloat(document.getElementById("brightness")?.value) || 1.0;
+      options.contrast = parseFloat(document.getElementById("contrast")?.value) || 1.0;
+      options.saturation = parseFloat(document.getElementById("saturation")?.value) || 1.0;
       break;
     case "create-thumbnail":
-      options.size =
-        parseInt(document.getElementById("thumbnailSize")?.value, 10) ||
-        256;
+      options.size = parseInt(document.getElementById("thumbnailSize")?.value, 10) || 256;
       break;
   }
   return options;
@@ -270,13 +428,17 @@ function getOperationOptions(operationId) {
 async function processFile() {
   if (!selectedFile || !currentOperation || isProcessing) return;
 
+  const options = getOperationOptions(currentOperation);
+  if (!options) {
+    return;
+  }
+
   isProcessing = true;
   setProcessingState(true);
 
   try {
     updateProcessingStatus("Preparando imagem...");
     const fileBase64 = await fileToBase64(selectedFile);
-    const options = getOperationOptions(currentOperation);
 
     updateProcessingStatus("Enviando para a nuvem...");
     const payload = {
@@ -322,6 +484,16 @@ async function processFile() {
     isProcessing = false;
     setProcessingState(false);
   }
+}
+
+function setResizePreset(width, height) {
+  document.getElementById("resizeWidth").value = width;
+  document.getElementById("resizeHeight").value = height;
+
+  validateAndUpdateInputs();
+
+  const totalPixels = width * height;
+  showToast(`Preset aplicado: ${width}×${height} (${totalPixels.toLocaleString()} pixels)`, "info");
 }
 
 function handleSuccess(result) {
